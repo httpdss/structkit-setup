@@ -1,0 +1,100 @@
+name: 'StructKit Setup'
+description: 'Install StructKit on PATH for GitHub Actions (uv tool install, cached)'
+author: 'Kenneth Belitzky'
+branding:
+  icon: 'download'
+  color: 'blue'
+
+inputs:
+  structkit-version:
+    description: 'StructKit version to install: "latest", an exact PyPI version, or a git URL'
+    required: false
+    default: 'latest'
+  python-version:
+    description: 'Python version to use for the StructKit tool environment'
+    required: false
+    default: '3.x'
+  cache:
+    description: 'Cache the uv tool and bin directories'
+    required: false
+    default: 'true'
+
+outputs:
+  version:
+    description: 'Resolved StructKit version (exact PyPI version, or the git URL that was installed)'
+    value: ${{ steps.resolve.outputs.version }}
+  cache-hit:
+    description: 'Whether the StructKit tool cache was restored (true/false)'
+    value: ${{ steps.cache.outputs.cache-hit || 'false' }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Python
+      id: python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Resolve StructKit version
+      id: resolve
+      shell: bash
+      env:
+        INPUT_STRUCTKIT_VERSION: ${{ inputs.structkit-version }}
+      run: bash "${GITHUB_ACTION_PATH}/scripts/resolve-version.sh"
+
+    - name: Set up uv
+      uses: astral-sh/setup-uv@v10
+      with:
+        enable-cache: false
+        tool-dir: ${{ runner.temp }}/structkit-setup/tools
+        tool-bin-dir: ${{ runner.temp }}/structkit-setup/bin
+
+    - name: Check for existing StructKit
+      id: check
+      shell: bash
+      env:
+        RESOLVED_VERSION: ${{ steps.resolve.outputs.version }}
+        UV_TOOL_DIR: ${{ runner.temp }}/structkit-setup/tools
+        UV_TOOL_BIN_DIR: ${{ runner.temp }}/structkit-setup/bin
+      run: bash "${GITHUB_ACTION_PATH}/scripts/check-existing.sh"
+
+    - name: Cache StructKit tools
+      id: cache
+      if: inputs.cache == 'true' && steps.check.outputs.skip != 'true'
+      uses: actions/cache@v4
+      with:
+        path: |
+          ${{ runner.temp }}/structkit-setup/tools
+          ${{ runner.temp }}/structkit-setup/bin
+        key: structkit-${{ runner.os }}-${{ runner.arch }}-${{ steps.python.outputs.python-version }}-${{ steps.resolve.outputs.cache-key }}
+
+    - name: Install StructKit
+      if: steps.check.outputs.skip != 'true' && steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      env:
+        RESOLVED_VERSION: ${{ steps.resolve.outputs.version }}
+        VERSION_SPEC: ${{ steps.resolve.outputs.spec }}
+        PYTHON_PATH: ${{ steps.python.outputs.python-path }}
+        UV_TOOL_DIR: ${{ runner.temp }}/structkit-setup/tools
+        UV_TOOL_BIN_DIR: ${{ runner.temp }}/structkit-setup/bin
+      run: bash "${GITHUB_ACTION_PATH}/scripts/install-structkit.sh"
+
+    - name: Add StructKit bin directory to PATH
+      shell: bash
+      run: |
+        echo "${{ runner.temp }}/structkit-setup/bin" >> "${GITHUB_PATH}"
+        echo "UV_TOOL_DIR=${{ runner.temp }}/structkit-setup/tools" >> "${GITHUB_ENV}"
+        echo "UV_TOOL_BIN_DIR=${{ runner.temp }}/structkit-setup/bin" >> "${GITHUB_ENV}"
+
+    - name: Verify StructKit
+      shell: bash
+      run: |
+        export PATH="${{ runner.temp }}/structkit-setup/bin:${PATH}"
+        if ! command -v structkit >/dev/null 2>&1; then
+          echo "::error::structkit is not available on PATH after setup"
+          exit 1
+        fi
+        echo "Using structkit at $(command -v structkit)"
+        structkit --help
+        echo "StructKit ${{ steps.resolve.outputs.version }} is ready"
