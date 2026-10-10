@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: httpdss/structkit-setup@v1
+      - uses: httpdss/structkit-setup@v0
       - run: structkit --help
       - run: structkit generate --help
 ```
@@ -29,8 +29,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: httpdss/structkit-setup@v1
-      - uses: httpdss/structkit-action@v1
+      - uses: httpdss/structkit-setup@v0
+      - uses: httpdss/structkit-action@v0
         with:
           command: validate
 ```
@@ -38,7 +38,7 @@ jobs:
 ### Pin a version
 
 ```yaml
-- uses: httpdss/structkit-setup@v1
+- uses: httpdss/structkit-setup@v0
   with:
     structkit-version: "3.3.0"
     python-version: "3.12"
@@ -47,7 +47,7 @@ jobs:
 ### Install from git
 
 ```yaml
-- uses: httpdss/structkit-setup@v1
+- uses: httpdss/structkit-setup@v0
   with:
     structkit-version: "https://github.com/httpdss/structkit.git@main"
 ```
@@ -70,7 +70,7 @@ jobs:
 | `cache-hit` | `true` when the tool cache was restored |
 
 ```yaml
-- uses: httpdss/structkit-setup@v1
+- uses: httpdss/structkit-setup@v0
   id: structkit
 - run: echo "Installed ${{ steps.structkit.outputs.version }} (cache-hit=${{ steps.structkit.outputs.cache-hit }})"
 ```
@@ -94,10 +94,10 @@ If `structkit` is already on `PATH` at the requested version, the install (and c
 This repository uses automated release management with semantic versioning:
 
 - **Release Drafting**: Releases are automatically drafted when PRs are merged to main
-- **First Release**: Will be tagged as `v1.0.0`
+- **Published tags**: `v0.0.1` and the floating major tag `v0` (moved by the major-tagging workflow)
 - **Pinning Recommendations**:
-  - Use `@v1` to automatically get minor and patch updates (recommended for most users)
-  - Use `@v1.0.0` to pin to a specific version
+  - Use `@v0` to automatically get minor and patch updates (recommended for most users)
+  - Use `@v0.0.1` to pin to a specific version
 
 ## License
 
